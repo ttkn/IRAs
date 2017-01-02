@@ -12,52 +12,87 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date, time
 
-df = pd.read_csv(r'c:\resolve\projects\IRAs\v2055.csv')
+df = pd.read_csv(r'c:\resolve\projects\IRAs\v2055.csv') #index_col=['y','m','w'],skipinitialspace=True)
 
 # convert date column from string
 df.Date = pd.to_datetime(df.Date)
-
 # set the date column as the index
 df.index = df.Date
 df = df.sort_index(ascending=True)
 
-def dca(budget, amount, interval):
+def dca(amount, interval='week'):
     '''
-    Purchases shares, spending $X at a time, up to a maximum.
-    Tracks total number of shares purchased
+    amount = how much to spend at a time
+    interval = how often
+    Returns total number of shares purchased
     
     notes & issues:
     ===================
-    - buying extra shares by making max go negative
-    - [basic draft OK. still need to add something for interval of purchase]
+    - if using multi index, cannot set the index as date and do groupby year/month/etc
+    - if using resample, also can't group by y/m/etc
+    
+    '''
+    '''solved issues:
+    ===================
+    [basic draft OK. still need to add something for interval of purchase]
     - [possible raw input options: week, month]
     - instead of using iterrows, subset and perform operations on subset
-    
-    
-    - [add storage for shares purchased per year]  
-    
-    solved issues:
-    ===================
     - [can't print a statement plus variables] SOLVED: used str(x)
     - [grouped data frame doesn't work with iterrows] SOLVED: added loop layer
-    
+    - [add storage for shares purchased per year]  
     '''
     shares = 0
     shares_table = {}
     prices = []
-    df1 = df[::interval].groupby(pd.TimeGrouper("A")) # subset/skip over X days and group by year
+    #df_week = df.groupby()
+    #df_month = df.groupby(['y', pd.Grouper(freq='m')]).first   # 'method' object is not iterable
+    #df_month = df.resample('m').resample('a')
+    df_month = df.resample('m').first()
+    if interval == 'week':
+        df1 = df_week
+    elif interval == 'month':
+        df1 = pd.DataFrame(df_month).groupby('y')
+    else:
+        print('Interval must be week or month')
     
+    def buy(x):
+        shares_bought = amount/x
+        return shares_bought
+    def track(x):
+        limit += amount
+        return limit
+    df['shares'] = df.Close.apply(buy)
     
-    for i, x in df1:    # i=year, x=dataframe
-        max1 = budget  # for each year, contribution limit is 5500
-        for e, row in x.iterrows():
-            shares_bought = amount/row.Close    #basic transactional details
-            max1 -= amount
-            if max1 <= 0:
-                break
-            else:
+    for eh, x in df1:    # i=year, x=dataframe
+        limit = 0       # limit resets every year
+    
+        for e, row in x.iterrows(): # for each row in 2012+
+            if limit < 5500:
+                shares_bought = amount/row.Close    #basic transactional details
+                limit += amount
                 shares += shares_bought
-                prices.append(row.Close)
-                #shares_table[i.year] = {'shares':shares, 'price':row.Close,'date':row.Date}
-                shares_table[i.year] = {'shares':shares}
-    return shares_table
+                print('{0} - {1} shares. ${2} spent'.format(row.Date, shares, limit))
+                
+                #else: # for each year, contribution limit is 5500
+                    #amount_adj = limit - 5500
+                    #shares += (amount + amount_adj)/row.Close
+                    #print('{0} - {1} shares. ${2} spent'.format(e.year, shares, limit))
+                    
+                
+        return shares
+
+def lump(amount):
+    df2 = df.groupby(df.y).last() # .last() returns the last line of each group
+    shares = 0
+    for i, row in df2.iterrows():
+        shares_bought = amount/row.Close
+        shares += shares_bought
+        print('{0} - {1} shares bought. {2} shares total.'.format(i, shares_bought, shares))    
+def buy(x):
+    limit = 0
+    while limit < 5500:
+        shares_bought = 2000/x
+        limit += 2000
+        return shares_bought
+    
+dca(800, 'month')
