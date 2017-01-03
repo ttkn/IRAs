@@ -1,10 +1,5 @@
 '''
 A look at different methods of funding IRAs: lump sum and dollar cost averaging.
-
-The idea of "returns" as it pertains to stocks and retirement seems misguided: defined as an increase in the trading price of the stock since initial purchase, celebrating this is useless because the increase is not "locked in" unless the stock is sold.
-
-The true measure of your IRA's performance is number of shares.
-Under current IRS rules, the annual limit for contributions is $5500
 Which purchasing method will yield more shares, the lump sum or dca?
 '''
 
@@ -19,7 +14,7 @@ df.index = df.Date
 df = df.sort_index(ascending=True)
 
 
-def dca(amount, interval='week'):
+def dca(amount, interval):
     '''
     amount = annual contribution
     interval = how often
@@ -47,33 +42,36 @@ def dca(amount, interval='week'):
     #df_month = df.resample('m').first()'''
   
     if interval == 'week':
-        i_week = pd.date_range('2012/1/1',periods=60,freq='7D') #generates date range by week
-        reduca = df.index.searchsorted(i_week)  # .serachsorted helps align 2 arrays
+        i_week = pd.date_range('2012/1/1',periods=260,freq='7D') #generates date range by week
+        i_week_filter = i_week[i_week < df.index[-1]]
+        reduca = df.index.searchsorted(i_week_filter)  # .serachsorted helps align 2 arrays
         amount = amount/52
     elif interval == 'month':
         i_month = pd.date_range('2012/1/1',periods=60,freq='30D') #generates date range by month
-        reduca = df.index.searchsorted(i_month)
+        i_month_filter = i_month[i_month < df.index[-1]]
+        reduca = df.index.searchsorted(i_month_filter)
         amount = amount/12
     else:
         print('Interval must be week or month')
+        return
         
     df['shares'] = amount/df.Close[reduca]  # subsets df and gets # of shares purchased
-    ok = df.dropna()
-    result = ok.groupby('y').sum()
-    return result
+    dfn = df.dropna()
+    result = dfn.groupby('y')['shares'].sum()
+    check = dfn.groupby(df.y).count()    
+    #print('{shares} shares purchased using a {interval}ly budget of ${amount}.'.format(shares=result.sum(), interval=interval, amount=amount))
+    print(result)
+    return result.sum()
 
 def lump(amount):
     df2 = df.groupby(df.y).last() # .last() returns the last line of each group
     shares = 0
+    shares_table = {}
     for i, row in df2.iterrows():
         shares_bought = amount/row.Close
         shares += shares_bought
-        print('{0} - {1} shares bought. {2} shares total.'.format(i, shares_bought, shares))    
-def buy(x):
-    limit = 0
-    while limit < 5500:
-        shares_bought = 2000/x
-        limit += 2000
-        return shares_bought
-    
-dca(800, 'month')
+        shares_table.update({i:shares_bought})
+        #print('{0} - {1} shares bought at ${2}.'.format(i, shares_bought, shares))    
+    x = pd.Series(shares_table)
+    print(x)
+    return x.sum()
