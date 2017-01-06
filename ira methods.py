@@ -4,15 +4,16 @@ Which purchasing method will yield more shares, the lump sum or dca?
 '''
 
 import pandas as pd
+import numpy as np
+import altair
 
-df = pd.read_csv(r'c:\resolve\projects\IRAs\v2055.csv') #index_col=['y','m','w'],skipinitialspace=True)
+df = pd.read_csv(r'c:\resolve\projects\IRAs\vwelx.csv') #index_col=['y','m','w'],skipinitialspace=True)
 
 # convert date column from string
 df.Date = pd.to_datetime(df.Date)
 # set the date column as the index
 df.index = df.Date
 df = df.sort_index(ascending=True)
-
 
 def dca(amount, interval):
     '''
@@ -22,46 +23,42 @@ def dca(amount, interval):
     
     notes & issues:
     ===================
-    - if using multi index, cannot set the index as date and do groupby year/month/etc
-    - if using resample, also can't group by y/m/etc
-    
+        
     solved issues:
     ===================
-    [basic draft OK. still need to add something for interval of purchase]
-    - [possible raw input options: week, month]
+    - if using multi index, cannot set the index as date and do groupby year/month/etc
+    - [if using resample, also can't group by y/m/etc] solved: create mask from resample
     - instead of using iterrows, subset and perform operations on subset
-    - [can't print a statement plus variables] SOLVED: used str(x)
-    - [grouped data frame doesn't work with iterrows] SOLVED: added loop layer
-    - [add storage for shares purchased per year]  
+
     
     failed grouping methods:
     ========================
-    #df_week = df.groupby()
     #df_month = df.groupby(['y', pd.Grouper(freq='m')]).first   # 'method' object is not iterable
     #df_month = df.resample('m').resample('a')
     #df_month = df.resample('m').first()'''
   
     if interval == 'week':
-        i_week = pd.date_range('2012/1/1',periods=260,freq='7D') #generates date range by week
-        i_week_filter = i_week[i_week < df.index[-1]]
-        reduca = df.index.searchsorted(i_week_filter)  # .serachsorted helps align 2 arrays
+        # reduces df to week by week data
+        mask = df.resample('W').index
         amount = amount/52
+
     elif interval == 'month':
-        i_month = pd.date_range('2012/1/1',periods=60,freq='30D') #generates date range by month
-        i_month_filter = i_month[i_month < df.index[-1]]
-        reduca = df.index.searchsorted(i_month_filter)
-        amount = amount/12
+        #reduces df to month by month data
+        mask = df.resample('BM').index
+        amount = amount/12     
+
     else:
         print('Interval must be week or month')
         return
-        
-    df['shares'] = amount/df.Close[reduca]  # subsets df and gets # of shares purchased
+    
+    reduced_df = df.index.searchsorted(mask) # Find indices where elements should be inserted to maintain order
+    df['shares'] = amount/df.Close[reduced_df]  # subsets df and gets # of shares purchased
     dfn = df.dropna()
     result = dfn.groupby('y')['shares'].sum()
-    check = dfn.groupby(df.y).count()    
+    check = dfn.groupby(df.y).count()
     #print('{shares} shares purchased using a {interval}ly budget of ${amount}.'.format(shares=result.sum(), interval=interval, amount=amount))
-    print(result)
-    return result.sum()
+    print(result.sum())
+    return result
 
 def lump(amount):
     df2 = df.groupby(df.y).last() # .last() returns the last line of each group
@@ -73,5 +70,9 @@ def lump(amount):
         shares_table.update({i:shares_bought})
         #print('{0} - {1} shares bought at ${2}.'.format(i, shares_bought, shares))    
     x = pd.Series(shares_table)
-    print(x)
-    return x.sum()
+    print(x.sum())
+    return x
+    
+compare = pd.DataFrame([DCA,lump_sum]).T
+compare.columns=['DCA','lump_sum']
+compare['pct_diff'] = compare.apply(lambda x: (x.DCA - x.lump_sum)/(np.mean([x.DCA, x.lump_sum])), axis=1)
