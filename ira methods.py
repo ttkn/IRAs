@@ -5,7 +5,6 @@ Which purchasing method will yield more shares, the lump sum or dca?
 
 import pandas as pd
 import numpy as np
-import altair
 
 df = pd.read_csv(r'c:\resolve\projects\IRAs\vwelx.csv') #index_col=['y','m','w'],skipinitialspace=True)
 
@@ -39,7 +38,7 @@ def dca(amount, interval):
   
     if interval == 'week':
         # reduces df to week by week data
-        mask = df.resample('W').index
+        mask = df.resample('7D').index
         amount = amount/52
 
     elif interval == 'month':
@@ -61,7 +60,7 @@ def dca(amount, interval):
     return result
 
 def lump(amount):
-    df2 = df.groupby(df.y).last() # .last() returns the last line of each group
+    df2 = df.groupby(df.y).last() # .last() reduces the groupby results to 1 row per group
     shares = 0
     shares_table = {}
     for i, row in df2.iterrows():
@@ -72,7 +71,11 @@ def lump(amount):
     x = pd.Series(shares_table)
     print(x.sum())
     return x
+
+DCA = dca(5000,'month')
+lump_sum = lump(5000)
     
 compare = pd.DataFrame([DCA,lump_sum]).T
 compare.columns=['DCA','lump_sum']
 compare['pct_diff'] = compare.apply(lambda x: (x.DCA - x.lump_sum)/(np.mean([x.DCA, x.lump_sum])), axis=1)
+ 

@@ -1,12 +1,9 @@
-title goes here
-================
-
-### Intro
+## Intro
 As an abstract idea, saving for retirement seems like something that we should be doing automatically. In reality, the many expenses of real-life often get in the way, and at the month's end, after everything is budgeted and accounted for, there isn't much left to spare—maybe $100.
 
-What about $100 though? In discussions about retirement as well as investing, two methods of funding are usually discussed: dollar-cost-averaging (DCA) and lumpsum investing. The first can be thought of as "spend $X dollars every so often" while the second, as the name suggests, is simply spending a large amount at once. Can saving $100 a month be as effective as investing it all at once?
+What about $100 though? In discussions about retirement as well as investing, two methods of funding are usually discussed: dollar-cost-averaging (DCA) and lumpsum investing. The first can be thought of as "spend $X dollars every so often" while the second, as the name suggests, is simply spending a large amount at once. Can saving $100 a month be as effective as investing $1000 all at once?
 
-### Data with which to answer our question
+## Data with which to answer our question
 To answer our question, we'll look at historical prices for Vanguard's 2055 target-date retirement fund, starting from 2012.
 
 ```python
@@ -34,7 +31,7 @@ Date
 
 Unlike stocks and other types of securities, target-date retirement funds (and mutual funds in general) only update their prices at the end of the day. This means that we'll just be using the closing price and ignoring the other price-related columns. Additionaly, columns for the week, month, and year were added to the file for grouping purposes.
 
-### Making the tools that will give us the answer
+## Making the tools that will give us the answer
 Using this data, we'll create two functions corresponding to DCA and lumpsum investing. Given an annual budget, the functions return the total number of shares purchased over time.
 
 The DCA function has been made to accomodate monthly as well as weekly savings targets through the ```interval``` argument. Depending on which option is selected, the dataframe is reduced to 12 or 52 rows of price info per year, which is then used to calculate the number of shares purchased. 
@@ -74,7 +71,7 @@ The lump sum function is much shorter as it only considers how much to put away 
 
 ```python
 def lump(amount):
-    df2 = df.groupby(df.y).last() # .last() returns the last line of each group
+    df2 = df.groupby(df.y).last() # .last() reduces the groupby results to 1 row per group
     shares = 0
     shares_table = {}
     for i, row in df2.iterrows():
@@ -87,7 +84,7 @@ def lump(amount):
     return x.sum()
 ```
 
-### Results
+## Results
 Let's test both functions using a modest budget of $1000/year and a monthly interval for dollar cost averaging:
 
 ```python
@@ -178,7 +175,7 @@ y
 
 Well that explains the 11.7% lead that DCA had in 2012: it bought an extra month's worth of shares. To correct this, we'll need to reevaluate how the data was reduced to monthly intervals. While we're making this change, we'd also benefit from switching to a different fund with a longer history.
 
-### Revision
+## Revision
 
 Instead of the target-date fund we started with, we will now use a old S&P 500 index fund and go back as far as 2000, which gives us three times the data:
 
@@ -199,7 +196,7 @@ In [2]: len(df)
 Out[2]: 4275
 ```
 
-After looking closer at the DCA function, it seems that reducing the data according to week/month was consistently off by one. When applied to this larger dataset, it got us 
+After closer examination of the DCA function, it seemed that the method used for reducing the date range was off by 1 month.When applied to this larger dataset, it consistently put either 11 or 13 months into any given year. Re-writing the DCA function using a different method has fixed the problem:
 
 ```python
 if interval == 'week':
@@ -240,9 +237,38 @@ y
 2015  12    12     12      12
 2016  12    12     12      12
 ```
+With that done, we can now compare saving for retirement via DCA and lump sum over a long period of time. Prior to correcting the DCA function, our comparison showed an overall difference of about 5%; with the spending between the two methods now even, there could be even less of a difference. However, the increased timespan may tilt the odds in favor of one or the other. Let's have a look, using an annual budget of $5000 and monthly interval:
 
-Now the DCA function is only buying shares 12 times a year, as it should be.
+```python
+In [2]: compare
+Out[2]: 
+             DCA    lump_sum  pct_diff
+y                                     
+2000  180.727669  177.242119  0.019474
+2001  176.916853  183.418929 -0.036089
+2002  193.054997  203.583070 -0.053087
+2003  192.949733  173.550856  0.105860
+2004  170.275040  165.617749  0.027731
+2005  164.246849  164.744646 -0.003026
+2006  156.981207  154.178230  0.018016
+2007  148.603369  153.280201 -0.030984
+2008  174.073575  204.666394 -0.161551
+2009  195.968517  173.310225  0.122716
+2010  171.358680  160.771704  0.063752
+2011  158.050740  159.540523 -0.009382
+2012  149.564927  147.754137  0.012181
+2013  135.316893  131.787036  0.026431
+2014  126.924064  127.713914 -0.006204
+2015  129.141811  135.906493 -0.051045
+2016  131.586481  128.008189  0.027568
+         2755.74     2745.07
+```
 
-### Expanding the scope of our question
-- longer time period, different fund
-What if we use other stocks? Would we see the same results? What about the dates selected for the lump sum? If they were randomized, how would that affect its performance?
+## Conclusion
+Our original question was whether saving $100 a month could be as effective as using $1200 all at once, and not only is it competitive, it turns out that it's sometimes even more effective. In the example above, 17 years of investing showed 9 years where dollar cost averaging yielded more shares than lump sum; at the end, it totaled ten shares ahead. At today's share price of $39.40, that would be a $394.00 difference. That said, the 10 share difference is less than 1%, which means that both investing methods are equally viable. Regardless of which one is used, for whatever reason or circumstance, the end result is practically the same for both.
+
+## Areas for future study
+An important factor to consider in evaluating the relatively close performance between DCA and lump sum is that 
+transaction costs are not reflected in the functions. These vary depending on the platform used to fund the investments and no default value was substituted to account for them. If the DCA were to be refined further, this would be the first area to investigate. Paying whatever amount as a purchasing fee 12 or 52 times over the course of a year would certainly have a measurable effect on the results.
+
+Besides transaction costs, another area for future study would be the dates used in the lump sum function. The main benefit to using the lump sum method is capturing a large number of shares at a good price. If the dates were set to correspond with annual lows from a given fund, thereby creating a best-case scenario, it would make for an interesting comparision to DCA. Alternatively, the dates could also be randomized to more closely reflect human behavior.
